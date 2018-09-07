@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as chai from 'chai';
-import { csvReaderObject } from '../src/index';
+import { csvReaderObject as csvReaderPlainObject } from '../src/index';
 
 const expect = chai.expect;
 
@@ -23,18 +23,46 @@ const readText = (filePath, onFileRead) => {
   });
 };
 
-describe('excel reader object', () => {
-  it('load data', async () => {
+const readJson = (filePath, onFileRead) => {
+  if (!fs.existsSync(filePath)) {
+    return onFileRead('No such file: ' + filePath);
+  }
 
-    const Foo = global.Vizabi.Reader.extend(csvReaderObject);
-    const csvReaderObject2 = new Foo({
+  fs.readFile(filePath, 'utf-8', (err, content) => {
+    if (err) {
+      onFileRead(err);
+      return;
+    }
+
+    try {
+      onFileRead(null, JSON.parse(content.toString()));
+    } catch (e) {
+      onFileRead(e);
+    }
+  });
+};
+
+describe('csv reader object', () => {
+  it('load data', async () => {
+    const expectedResult = require('./results/main.json');
+    const CsvReader = global.Vizabi.Reader.extend(csvReaderPlainObject);
+    const csvReaderObject = new CsvReader({
       path: path.resolve('test/fixtures/basic.csv'),
       additionalTextReader: readText
     });
+    const result = await csvReaderObject.load();
 
-    const res = await csvReaderObject2.load();
+    expect(result).to.deep.equal(expectedResult);
+  });
+  it('load assets', async () => {
+    const expectedResult = require('./fixtures/world-50m.json');
+    const CsvReader = global.Vizabi.Reader.extend(csvReaderPlainObject);
+    const csvReaderObject = new CsvReader({
+      assetsPath: path.resolve('test/fixtures/') + '/',
+      additionalJsonReader: readJson
+    });
+    const result = await csvReaderObject.getAsset('world-50m.json');
 
-    expect(res.columns).to.deep.equal(['geo', 'time', 'GDP', 'LEX', 'POP', 'world_region', 'category']);
-    expect(res.rows.length).to.equal(6600);
+    expect(result).to.deep.equal(expectedResult);
   });
 });
