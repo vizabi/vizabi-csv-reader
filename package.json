@@ -1,0 +1,37 @@
+{
+  "name": "vizabi-excel-reader",
+  "version": "0.1.0",
+  "description": "vizabi-excel-reader",
+  "scripts": {
+    "start": "node dist/vizabi-excel-reader-node.js",
+    "build-backend": "FRONTEND_ENV=0 npm run webpack -- --env.mode production",
+    "build-frontend": "FRONTEND_ENV=1 npm run webpack -- --env.mode production",
+    "build": "npm run build-backend && npm run build-frontend",
+    "test": "mocha --exit --timeout 200000 --require ts-node/register --recursive test/**/*.spec.ts",
+    "webpack": "webpack"
+  },
+  "dependencies": {
+    "fetch-polyfill": "^0.8.2",
+    "parse-decimal-number": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "5.2.5",
+    "@types/node": "9.4.6",
+    "chai": "4.1.2",
+    "clean-webpack-plugin": "0.1.19",
+    "d3": "^5.7.0",
+    "isomorphic-fetch": "^2.2.1",
+    "mocha": "5.2.0",
+    "node-fetch": "^2.2.0",
+    "source-map-loader": "0.2.4",
+    "ts-loader": "5.0.0",
+    "ts-node": "5.0.0",
+    "tslint": "5.9.1",
+    "typescript": "2.7.2",
+    "vizabi": "^0.33.10",
+    "webpack": "4.8.1",
+    "webpack-cli": "2.1.3",
+    "webpack-dev-server": "3.1.4",
+    "webpack-merge": "4.1.2"
+  }
+}
