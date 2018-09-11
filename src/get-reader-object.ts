@@ -21,6 +21,7 @@ export const getReaderObject = () => ({
     this.keySize = readerInfo.keySize || 1;
     this.assetsPath = readerInfo.assetsPath || '';
     this.additionalTextReader = readerInfo.additionalTextReader;
+    this.additionalJsonReader = readerInfo.additionalJsonReader;
 
     this._parseStrategies = [
       ...[',.', '.,'].map(separator => this._createParseStrategy(separator)),
@@ -103,8 +104,14 @@ export const getReaderObject = () => ({
   getAsset(asset, options = {}) {
     const path = this.assetsPath + asset;
 
+    let jsonReader = Vizabi.utils.d3json;
+
+    if (this.additionalJsonReader) {
+      jsonReader = this.additionalJsonReader;
+    }
+
     return new Promise((resolve, reject) => {
-      Vizabi.utils.d3json(path, (error, text) => {
+      jsonReader(path, (error, text) => {
         if (error) {
           error.name = this.ERRORS.FILE_NOT_FOUND;
           error.message = `No permissions, missing or empty file: ${path}`;

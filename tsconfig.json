@@ -24,8 +24,7 @@
       ]
     },
     "include": [
-      "src/index-backend.ts",
-      "src/index-frontend.ts"
+      "src/index.ts"
     ],
     "exclude": [
       "dist",
