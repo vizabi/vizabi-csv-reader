@@ -9,33 +9,33 @@ global.d3 = require('d3');
 global.Vizabi = require('vizabi');
 
 const readText = (filePath, onFileRead) => {
-  if (!fs.existsSync(filePath)) {
-    return onFileRead('No such file: ' + filePath);
-  }
-
-  fs.readFile(filePath, 'utf-8', (err, content) => {
-    if (err) {
-      onFileRead(err);
-      return;
+  fs.stat(filePath, (fileErr, stat: any) => {
+    if (fileErr) {
+      return onFileRead(fileErr);
     }
 
-    onFileRead(null, content.toString());
+    if (stat.code === 'ENOENT') {
+      return onFileRead('No such file: ' + filePath);
+    }
+
+    fs.readFile(filePath, 'utf-8', (readErr, content) => {
+      if (readErr) {
+        return onFileRead(readErr);
+      }
+
+      onFileRead(null, content.toString());
+    });
   });
 };
 
 const readJson = (filePath, onFileRead) => {
-  if (!fs.existsSync(filePath)) {
-    return onFileRead('No such file: ' + filePath);
-  }
-
-  fs.readFile(filePath, 'utf-8', (err, content) => {
+  readText(filePath, (err, textContent) => {
     if (err) {
-      onFileRead(err);
-      return;
+      return onFileRead(err);
     }
 
     try {
-      onFileRead(null, JSON.parse(content.toString()));
+      onFileRead(null, JSON.parse(textContent.toString()));
     } catch (e) {
       onFileRead(e);
     }
