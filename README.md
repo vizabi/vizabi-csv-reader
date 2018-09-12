@@ -55,7 +55,7 @@ console.log(result);
 ```html
 <script src="node_modules/vizabi-csv-reader/dist/vizabi-csv-reader.js"></script>
 <script>
-  // CsvReader was imported by script above
+  // CsvReader global variable was imported by script above
   Vizabi.Reader.extend("csv-reader", CsvReader.csvReaderObject);
   // use "csv-reader" as a Vizabi init parameter
   // .....
@@ -66,16 +66,13 @@ console.log(result);
 
 ```javascript
 import * as fs from 'fs';
-import * as path from 'path';
 import { csvReaderObject as csvReaderPlainObject } from 'vizabi-csv-reader';
-
-const expect = chai.expect;
 
 global.d3 = require('d3');
 global.Vizabi = require('vizabi');
 
 const readJson = (filePath, onFileRead) => {
-  fs.stat(filePath, (fileErr, stat: any) => {
+  fs.stat(filePath, (fileErr, stat) => {
     if (fileErr) {
       return onFileRead(fileErr);
     }
@@ -98,10 +95,9 @@ const readJson = (filePath, onFileRead) => {
   });
 };
 
-const expectedResult = require('./fixtures/world-50m.json');
 const CsvReader = global.Vizabi.Reader.extend(csvReaderPlainObject);
 const csvReaderObject = new CsvReader({
-  assetsPath: path.resolve('test/fixtures/') + '/',
+  assetsPath: 'path to asset file',
   additionalJsonReader: readJson
 });
 const result = await csvReaderObject.getAsset('path to asset');
@@ -114,7 +110,7 @@ console.log(result);
 * `path` - path to csv file that would be processed
 * `lastModified` - last modification date (optional)
 * `delimiter` - CSV delimiter character (optional)
-* `keySize` - DDF key size (1 by default)
+* `keySize` - key size (1 by default)
 * `assetsPath` - path to assets JSON file (optional)
 * `additionalTextReader` - function that should replace tenured text reading function 
                            (optional, see examples above, could be useful on frontend or testing) 
