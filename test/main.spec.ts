@@ -43,7 +43,7 @@ const readJson = (filePath, onFileRead) => {
 };
 
 describe('csv reader object', () => {
-  it('load data', async () => {
+  it('basic example', async () => {
     const expectedResult = require('./results/main.json');
     const CsvReader = global.Vizabi.Reader.extend(csvReaderPlainObject);
     const csvReaderObject = new CsvReader({
@@ -62,6 +62,18 @@ describe('csv reader object', () => {
       additionalJsonReader: readJson
     });
     const result = await csvReaderObject.getAsset('world-50m.json');
+
+    expect(result).to.deep.equal(expectedResult);
+  });
+  it('load data with time in columns format', async () => {
+    const expectedResult = require('./results/timeright--education.json');
+    const CsvReader = global.Vizabi.Reader.extend(csvReaderPlainObject);
+    const csvReaderObject = new CsvReader({
+      path: path.resolve('test/fixtures/timeright--education.csv'),
+      timeInColumns: true,
+      additionalTextReader: readText
+    });
+    const result = await csvReaderObject.load();
 
     expect(result).to.deep.equal(expectedResult);
   });

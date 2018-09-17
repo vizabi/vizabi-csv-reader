@@ -5,8 +5,13 @@ declare const Vizabi;
 
 const cached = {};
 
-export const getReaderObject = () => ({
+export interface IResult {
+  columns: string[];
+  rows: any[];
+}
 
+export const getReaderObject = () => ({
+  MISSED_INDICATOR_NAME: 'indicator',
   _name: 'csv',
 
   /**
@@ -14,15 +19,15 @@ export const getReaderObject = () => ({
    * @param {Object} readerInfo Information about the reader
    */
   init(readerInfo) {
-    this._data = [];
-    this._lastModified = readerInfo.lastModified || '';
-    this._basepath = readerInfo.path;
+    this.lastModified = readerInfo.lastModified || '';
+    this.path = readerInfo.path;
     this.delimiter = readerInfo.delimiter;
     this.keySize = readerInfo.keySize || 1;
     this.assetsPath = readerInfo.assetsPath || '';
     this.additionalTextReader = readerInfo.additionalTextReader;
     this.additionalJsonReader = readerInfo.additionalJsonReader;
-
+    this.isTimeInColumns = readerInfo.timeInColumns || false;
+    this.timeKey = 'time';
     this._parseStrategies = [
       ...[',.', '.,'].map(separator => this._createParseStrategy(separator)),
       numberPar => numberPar,
@@ -34,16 +39,17 @@ export const getReaderObject = () => ({
       UNDEFINED_DELIMITER: 'reader/error/undefinedDelimiter',
       EMPTY_HEADERS: 'reader/error/emptyHeaders',
       DIFFERENT_SEPARATORS: 'reader/error/differentSeparators',
-      FILE_NOT_FOUND: 'reader/error/fileNotFoundOrPermissionsOrEmpty'
+      FILE_NOT_FOUND: 'reader/error/fileNotFoundOrPermissionsOrEmpty',
+      REPEATED_KEYS: 'reader/error/repeatedKeys'
     });
   },
 
-  ensureDataIsCorrect({columns, rows}, parsers) {
+  ensureDataIsCorrect({columns, rows}: IResult, parsers) {
     const timeKey = columns[this.keySize];
     const [firstRow] = rows;
     const parser = parsers[timeKey];
-
     const time = firstRow[timeKey].trim();
+
     if (parser && !parser(time)) {
       throw this.error(this.ERRORS.WRONG_TIME_COLUMN_OR_UNITS, undefined, time);
     }
@@ -59,29 +65,29 @@ export const getReaderObject = () => ({
    * @returns {object} object of info about the dataset
    */
   getDatasetInfo() {
-    return {name: this._basepath.split('/').pop()};
+    return {name: this.path.split('/').pop()};
   },
 
   getCached() {
     return cached;
   },
 
-  load() {
-    const {_basepath: path, _lastModified} = this;
-    const cachedPromise = cached[path + _lastModified];
+  async load(parsers): Promise<IResult> {
+    const cacheKey = this.name + this.path + this.lastModified;
+    const cachedPromise = cached[cacheKey];
 
-    return cachedPromise ? cachedPromise : cached[path + _lastModified] = new Promise((resolve, reject) => {
+    return cachedPromise ? cachedPromise : cached[cacheKey] = new Promise((resolve, reject) => {
       let textReader = Vizabi.utils.d3text;
 
       if (this.additionalTextReader) {
         textReader = this.additionalTextReader;
       }
 
-      textReader(path, (error, text) => {
+      textReader(this.path, (error, text) => {
         if (error) {
           error.name = this.ERRORS.FILE_NOT_FOUND;
-          error.message = `No permissions, missing or empty file: ${path}`;
-          error.endpoint = path;
+          error.message = `No permissions, missing or empty file: ${this.path}`;
+          error.endpoint = this.path;
           return reject(error);
         }
 
@@ -90,8 +96,8 @@ export const getReaderObject = () => ({
           const parser = d3.dsvFormat(delimiter);
           const rows = parser.parse(text, row => Object.keys(row).every(key => !row[key]) ? null : row);
           const {columns} = rows;
-
-          const result = {columns, rows};
+          const transformer = this.isTimeInColumns ? this.timeInColumns.bind(this) : r => r;
+          const result = transformer({columns, rows}, parsers);
 
           resolve(result);
         } catch (e) {
@@ -101,7 +107,64 @@ export const getReaderObject = () => ({
     });
   },
 
-  getAsset(asset, options = {}) {
+  timeInColumns({columns, rows}: IResult, parsers) {
+    const missedIndicator = parsers && parsers[this.timeKey] && !!parsers[this.timeKey](columns[this.keySize]);
+
+    if (missedIndicator) {
+      Vizabi.utils.warn('Indicator column is missed.');
+    }
+
+    const indicatorKey = missedIndicator ? this.MISSED_INDICATOR_NAME : columns[this.keySize];
+    const concepts = columns.slice(0, this.keySize).concat(missedIndicator ? Vizabi.utils.capitalize(this.MISSED_INDICATOR_NAME) : rows.reduce((result, row) => {
+      const concept = row[indicatorKey];
+      if (!result.includes(concept) && concept) {
+        result.push(concept);
+      }
+      return result;
+    }, []));
+
+    concepts.splice(this.keySize, 0, this.timeKey);
+
+    const indicators = concepts.slice(this.keySize + 1);
+    const [entityDomain] = concepts;
+
+    return {
+      columns: concepts,
+      rows: rows.reduce((result, row) => {
+        const rowEntityDomain = row[entityDomain];
+        const resultRows = result.filter(resultRow => resultRow[entityDomain] === rowEntityDomain);
+
+        if (resultRows.length) {
+          if (resultRows[0][row[indicatorKey]] !== null) {
+            throw this.error(this.ERRORS.REPEATED_KEYS, null, {
+              indicator: row[indicatorKey],
+              key: row[entityDomain]
+            });
+          }
+
+          resultRows.forEach(resultRow => {
+            resultRow[row[indicatorKey]] = row[resultRow[this.timeKey]];
+          });
+        } else {
+          Object.keys(row).forEach(key => {
+            if (![entityDomain, indicatorKey].includes(key)) {
+              const domainAndTime = {[entityDomain]: row[entityDomain], [this.timeKey]: key};
+              const indicatorsObject = indicators.reduce((indResult, indicator) => {
+                indResult[indicator] = missedIndicator || row[indicatorKey] === indicator ? row[key] : null;
+                return indResult;
+              }, {});
+
+              result.push(Object.assign(domainAndTime, indicatorsObject));
+            }
+          });
+        }
+
+        return result;
+      }, [])
+    };
+  },
+
+  async getAsset(asset, options = {}) {
     const path = this.assetsPath + asset;
 
     let jsonReader = Vizabi.utils.d3json;
@@ -247,8 +310,7 @@ export const getReaderObject = () => ({
   },
 
   _onLoadError(error) {
-    const {_basepath: path, _lastModified} = this;
-    delete cached[path + _lastModified];
+    delete cached[this.path + this.lastModified];
 
     this._super(error);
   }

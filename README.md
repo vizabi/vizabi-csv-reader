@@ -108,6 +108,7 @@ console.log(result);
 ### Initial parameters
 
 * `path` - path to csv file that would be processed
+* `timeInColumns` - a flag that indicates that CSV file contains data in `time-in-columns` format (false by default)
 * `lastModified` - last modification date (optional)
 * `delimiter` - CSV delimiter character (optional)
 * `keySize` - key size (1 by default)
