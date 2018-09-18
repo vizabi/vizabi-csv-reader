@@ -19,8 +19,8 @@ export const getReaderObject = () => ({
    * @param {Object} readerInfo Information about the reader
    */
   init(readerInfo) {
-    this.lastModified = readerInfo.lastModified || '';
-    this.path = readerInfo.path;
+    this._lastModified = readerInfo.lastModified || '';
+    this._basepath = readerInfo.path;
     this.delimiter = readerInfo.delimiter;
     this.keySize = readerInfo.keySize || 1;
     this.assetsPath = readerInfo.assetsPath || '';
@@ -65,7 +65,7 @@ export const getReaderObject = () => ({
    * @returns {object} object of info about the dataset
    */
   getDatasetInfo() {
-    return {name: this.path.split('/').pop()};
+    return {name: this._basepath.split('/').pop()};
   },
 
   getCached() {
@@ -73,7 +73,7 @@ export const getReaderObject = () => ({
   },
 
   async load(parsers): Promise<IResult> {
-    const cacheKey = this._name + this.path + this.lastModified;
+    const cacheKey = this._name + this._basepath + this._lastModified;
     const cachedPromise = cached[cacheKey];
 
     return cachedPromise ? cachedPromise : cached[cacheKey] = new Promise((resolve, reject) => {
@@ -83,11 +83,11 @@ export const getReaderObject = () => ({
         textReader = this.additionalTextReader;
       }
 
-      textReader(this.path, (error, text) => {
+      textReader(this._basepath, (error, text) => {
         if (error) {
           error.name = this.ERRORS.FILE_NOT_FOUND;
-          error.message = `No permissions, missing or empty file: ${this.path}`;
-          error.endpoint = this.path;
+          error.message = `No permissions, missing or empty file: ${this._basepath}`;
+          error.endpoint = this._basepath;
           return reject(error);
         }
 
@@ -310,7 +310,7 @@ export const getReaderObject = () => ({
   },
 
   _onLoadError(error) {
-    delete cached[this.path + this.lastModified];
+    delete cached[this._basepath + this._lastModified];
 
     this._super(error);
   }
