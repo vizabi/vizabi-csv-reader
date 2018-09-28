@@ -54,6 +54,18 @@ describe('csv reader object', () => {
 
     expect(result).to.deep.equal(expectedResult);
   });
+  it('name column example', async () => {
+    const expectedResult = require('./results/name-column.json');
+    const CsvReader = global.Vizabi.Reader.extend(csvReaderPlainObject);
+    const csvReaderObject = new CsvReader({
+      path: path.resolve('test/fixtures/name-column.csv'),
+      additionalTextReader: readText,
+      hasNameColumn: true
+    });
+    const result = await csvReaderObject.load();
+
+    expect(result).to.deep.equal(expectedResult);
+  });
   it('load assets', async () => {
     const expectedResult = require('./fixtures/world-50m.json');
     const CsvReader = global.Vizabi.Reader.extend(csvReaderPlainObject);

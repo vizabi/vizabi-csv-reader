@@ -99,8 +99,10 @@ export const getReaderObject = () => ({
           const rows = parser.parse(text, row => Object.keys(row).every(key => !row[key]) ? null : row);
           const {columns} = rows;
 
-          //move column "name" so it goes after "time". turns [name, geo, gender, time, lex] into [geo, gender, time, name, lex]
-          if (this.hasNameColumn) columns.splice(this.keySize + 1, 0, columns.splice(this.nameColumnIndex, 1)[0]);
+          // move column "name" so it goes after "time". turns [name, geo, gender, time, lex] into [geo, gender, time, name, lex]
+          if (this.hasNameColumn) {
+            columns.splice(this.keySize + 1, 0, columns.splice(this.nameColumnIndex, 1)[0]);
+          }
 
           const transformer = this.isTimeInColumns ? this.timeInColumns.bind(this) : r => r;
           const result = transformer({columns, rows}, parsers);
@@ -114,18 +116,24 @@ export const getReaderObject = () => ({
   },
 
   timeInColumns({columns, rows}: IResult, parsers) {
-    
     const keySize = this.keySize;
+
     let nameConcept = null;
     
-    //remove column "name" as array's k+1 th element, but remember its header in a variable. if it's an empty string, call it "name"
-    //name column is not at its original index because it was moved by csv reader "load" method
-    if (this.hasNameColumn) nameConcept = columns.splice(keySize + 1, 1)[0] || "name";
+    // remove column "name" as array's k+1 th element, but remember its header in a variable.
+    // if it's an empty string, call it "name"
+    // name column is not at its original index because it was moved by csv reader "load" method
+    if (this.hasNameColumn) {
+      nameConcept = columns.splice(keySize + 1, 1)[0] || 'name';
+    }
     
     const missedIndicator = parsers && parsers[this.timeKey] && !!parsers[this.timeKey](columns[keySize]);
-    if (missedIndicator) Vizabi.utils.warn('Indicator column is missed.');
-    const indicatorKey = missedIndicator ? this.MISSED_INDICATOR_NAME : columns[keySize];
 
+    if (missedIndicator) {
+      Vizabi.utils.warn('Indicator column is missed.');
+    }
+
+    const indicatorKey = missedIndicator ? this.MISSED_INDICATOR_NAME : columns[keySize];
     const concepts = columns.slice(0, keySize)
       .concat(this.timeKey)
       .concat(nameConcept || [])
@@ -160,16 +168,13 @@ export const getReaderObject = () => ({
         } else {
           Object.keys(row).forEach(key => {
             if (![entityDomain, indicatorKey, nameConcept].includes(key)) {
-              
               const domainAndTime = {
                 [entityDomain]: row[entityDomain], 
                 [this.timeKey]: key
               };
-              
               const optionalNameColumn = !nameConcept ? {} : {
                 [nameConcept]: row[nameConcept]
               };
-              
               const indicatorsObject = indicators.reduce((indResult, indicator) => {
                 indResult[indicator] = missedIndicator || row[indicatorKey] === indicator ? row[key] : null;
                 return indResult;

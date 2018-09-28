@@ -1,0 +1,24 @@
+{
+  "columns": [
+    "geo",
+    "time",
+    "name",
+    "GDP",
+    "LEX",
+    "POP",
+    "world_region",
+    "category"
+  ],
+  "rows": [
+    {
+      "name": "Albania",
+      "geo": "alb",
+      "time": "1990",
+      "GDP": "3824.84",
+      "LEX": "71.84",
+      "POP": "3289483",
+      "world_region": "europe",
+      "category": "country"
+    }
+  ]
+}
