@@ -4,6 +4,7 @@ declare const d3;
 declare const Vizabi;
 
 const cached = {};
+const GOOGLE_DOC_PREFIX = 'https://docs.google.com/spreadsheets/';
 
 export interface IResult {
   columns: string[];
@@ -30,6 +31,14 @@ export const getReaderObject = () => ({
     this.additionalJsonReader = readerInfo.additionalJsonReader;
     this.isTimeInColumns = readerInfo.timeInColumns || false;
     this.timeKey = 'time';
+
+    // adjust _basepath if given a path to a google doc but without the correct export suffix. the first sheet is taken since none is specified
+    if (this._basepath.includes(GOOGLE_DOC_PREFIX) && !this._basepath.includes('tqx=out:csv')) {
+      const googleDocParsedUrl = this._basepath.split(GOOGLE_DOC_PREFIX)[1].split('/');
+      const googleDocId = googleDocParsedUrl[googleDocParsedUrl.indexOf('d') + 1];
+      this._basepath = GOOGLE_DOC_PREFIX + 'd/' + googleDocId + '/gviz/tq?tqx=out:csv'; // possible to add a default sheet like &sheet=data
+    }
+
     this._parseStrategies = [
       ...[',.', '.,'].map(separator => this._createParseStrategy(separator)),
       numberPar => numberPar,
