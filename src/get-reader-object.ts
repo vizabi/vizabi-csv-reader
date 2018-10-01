@@ -4,6 +4,7 @@ declare const d3;
 declare const Vizabi;
 
 const cached = {};
+const GOOGLE_DOC_PREFIX = 'https://docs.google.com/spreadsheets/';
 
 export interface IResult {
   columns: string[];
@@ -23,11 +24,21 @@ export const getReaderObject = () => ({
     this._basepath = readerInfo.path;
     this.delimiter = readerInfo.delimiter;
     this.keySize = readerInfo.keySize || 1;
+    this.hasNameColumn = readerInfo.hasNameColumn || false;
+    this.nameColumnIndex = readerInfo.nameColumnIndex || 0;
     this.assetsPath = readerInfo.assetsPath || '';
     this.additionalTextReader = readerInfo.additionalTextReader;
     this.additionalJsonReader = readerInfo.additionalJsonReader;
     this.isTimeInColumns = readerInfo.timeInColumns || false;
     this.timeKey = 'time';
+
+    // adjust _basepath if given a path to a google doc but without the correct export suffix. the first sheet is taken since none is specified
+    if (this._basepath.includes(GOOGLE_DOC_PREFIX) && !this._basepath.includes('tqx=out:csv')) {
+      const googleDocParsedUrl = this._basepath.split(GOOGLE_DOC_PREFIX)[1].split('/');
+      const googleDocId = googleDocParsedUrl[googleDocParsedUrl.indexOf('d') + 1];
+      this._basepath = GOOGLE_DOC_PREFIX + 'd/' + googleDocId + '/gviz/tq?tqx=out:csv'; // possible to add a default sheet like &sheet=data
+    }
+
     this._parseStrategies = [
       ...[',.', '.,'].map(separator => this._createParseStrategy(separator)),
       numberPar => numberPar,
@@ -96,6 +107,12 @@ export const getReaderObject = () => ({
           const parser = d3.dsvFormat(delimiter);
           const rows = parser.parse(text, row => Object.keys(row).every(key => !row[key]) ? null : row);
           const {columns} = rows;
+
+          // move column "name" so it goes after "time". turns [name, geo, gender, time, lex] into [geo, gender, time, name, lex]
+          if (this.hasNameColumn) {
+            columns.splice(this.keySize + 1, 0, columns.splice(this.nameColumnIndex, 1)[0]);
+          }
+
           const transformer = this.isTimeInColumns ? this.timeInColumns.bind(this) : r => r;
           const result = transformer({columns, rows}, parsers);
 
@@ -108,24 +125,36 @@ export const getReaderObject = () => ({
   },
 
   timeInColumns({columns, rows}: IResult, parsers) {
-    const missedIndicator = parsers && parsers[this.timeKey] && !!parsers[this.timeKey](columns[this.keySize]);
+    const keySize = this.keySize;
+
+    let nameConcept = null;
+    
+    // remove column "name" as array's k+1 th element, but remember its header in a variable.
+    // if it's an empty string, call it "name"
+    // name column is not at its original index because it was moved by csv reader "load" method
+    if (this.hasNameColumn) {
+      nameConcept = columns.splice(keySize + 1, 1)[0] || 'name';
+    }
+    
+    const missedIndicator = parsers && parsers[this.timeKey] && !!parsers[this.timeKey](columns[keySize]);
 
     if (missedIndicator) {
       Vizabi.utils.warn('Indicator column is missed.');
     }
 
-    const indicatorKey = missedIndicator ? this.MISSED_INDICATOR_NAME : columns[this.keySize];
-    const concepts = columns.slice(0, this.keySize).concat(missedIndicator ? Vizabi.utils.capitalize(this.MISSED_INDICATOR_NAME) : rows.reduce((result, row) => {
-      const concept = row[indicatorKey];
-      if (!result.includes(concept) && concept) {
-        result.push(concept);
-      }
-      return result;
-    }, []));
+    const indicatorKey = missedIndicator ? this.MISSED_INDICATOR_NAME : columns[keySize];
+    const concepts = columns.slice(0, keySize)
+      .concat(this.timeKey)
+      .concat(nameConcept || [])
+      .concat(missedIndicator ? Vizabi.utils.capitalize(this.MISSED_INDICATOR_NAME) : rows.reduce((result, row) => {
+        const concept = row[indicatorKey];
+        if (!result.includes(concept) && concept) {
+          result.push(concept);
+        }
+        return result;
+      }, []));
 
-    concepts.splice(this.keySize, 0, this.timeKey);
-
-    const indicators = concepts.slice(this.keySize + 1);
+    const indicators = concepts.slice(keySize + 1 + (nameConcept ? 1 : 0));
     const [entityDomain] = concepts;
 
     return {
@@ -147,14 +176,20 @@ export const getReaderObject = () => ({
           });
         } else {
           Object.keys(row).forEach(key => {
-            if (![entityDomain, indicatorKey].includes(key)) {
-              const domainAndTime = {[entityDomain]: row[entityDomain], [this.timeKey]: key};
+            if (![entityDomain, indicatorKey, nameConcept].includes(key)) {
+              const domainAndTime = {
+                [entityDomain]: row[entityDomain], 
+                [this.timeKey]: key
+              };
+              const optionalNameColumn = !nameConcept ? {} : {
+                [nameConcept]: row[nameConcept]
+              };
               const indicatorsObject = indicators.reduce((indResult, indicator) => {
                 indResult[indicator] = missedIndicator || row[indicatorKey] === indicator ? row[key] : null;
                 return indResult;
               }, {});
 
-              result.push(Object.assign(domainAndTime, indicatorsObject));
+              result.push(Object.assign(domainAndTime, optionalNameColumn, indicatorsObject));
             }
           });
         }
