@@ -1,6 +1,6 @@
 {
   "name": "vizabi-csv-reader",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "vizabi-csv-reader",
   "main": "./lib/index.js",
   "scripts": {

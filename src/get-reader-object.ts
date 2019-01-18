@@ -33,7 +33,7 @@ export const getReaderObject = () => ({
     this.timeKey = 'time';
 
     // adjust _basepath if given a path to a google doc but without the correct export suffix. the first sheet is taken since none is specified
-    if (this._basepath.includes(GOOGLE_DOC_PREFIX) && !this._basepath.includes('tqx=out:csv')) {
+    if (this._basepath.includes(GOOGLE_DOC_PREFIX) && !this._basepath.includes('tqx=out:csv') && !this._basepath.includes('/pub?')) {
       const googleDocParsedUrl = this._basepath.split(GOOGLE_DOC_PREFIX)[1].split('/');
       const googleDocId = googleDocParsedUrl[googleDocParsedUrl.indexOf('d') + 1];
       this._basepath = GOOGLE_DOC_PREFIX + 'd/' + googleDocId + '/gviz/tq?tqx=out:csv'; // possible to add a default sheet like &sheet=data
