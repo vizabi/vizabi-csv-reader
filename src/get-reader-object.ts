@@ -22,6 +22,7 @@ export const getReaderObject = () => ({
   init(readerInfo) {
     this._lastModified = readerInfo.lastModified || '';
     this._basepath = readerInfo.path;
+    this.googleDocSheet = readerInfo.sheet;
     this.delimiter = readerInfo.delimiter;
     this.keySize = readerInfo.keySize || 1;
     this.hasNameColumn = readerInfo.hasNameColumn || false;
@@ -36,7 +37,7 @@ export const getReaderObject = () => ({
     if (this._basepath.includes(GOOGLE_DOC_PREFIX) && !this._basepath.includes('tqx=out:csv') && !this._basepath.includes('/pub?')) {
       const googleDocParsedUrl = this._basepath.split(GOOGLE_DOC_PREFIX)[1].split('/');
       const googleDocId = googleDocParsedUrl[googleDocParsedUrl.indexOf('d') + 1];
-      this._basepath = GOOGLE_DOC_PREFIX + 'd/' + googleDocId + '/gviz/tq?tqx=out:csv'; // possible to add a default sheet like &sheet=data
+      this._basepath = GOOGLE_DOC_PREFIX + 'd/' + googleDocId + '/gviz/tq?tqx=out:csv' + (this.googleDocSheet ? ('&sheet=' + encodeURI(this.googleDocSheet)) : '' );
     }
 
     this._parseStrategies = [
