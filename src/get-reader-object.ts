@@ -36,7 +36,7 @@ export const getReaderObject = () => ({
     if (this._basepath.includes(GOOGLE_DOC_PREFIX) && !this._basepath.includes('tqx=out:csv')) {
       const googleDocParsedUrl = this._basepath.split(GOOGLE_DOC_PREFIX)[1].split('/');
       const googleDocId = googleDocParsedUrl[googleDocParsedUrl.indexOf('d') + 1];
-      this._basepath = GOOGLE_DOC_PREFIX + 'd/' + googleDocId + '/gviz/tq?tqx=out:csv'; // possible to add a default sheet like &sheet=data
+      this._basepath = GOOGLE_DOC_PREFIX + 'd/' + googleDocId + '/gviz/tq?tqx=out:csv' + (this.googleDocSheet ? ('&sheet=' + encodeURI(this.googleDocSheet.toLowerCase())) : '' );
     }
 
     this._parseStrategies = [
@@ -76,7 +76,7 @@ export const getReaderObject = () => ({
    * @returns {object} object of info about the dataset
    */
   getDatasetInfo() {
-    return {name: this._basepath.split('/').pop()};
+    return {name: this.googleDocSheet ? this.googleDocSheet : this._basepath.split('/').pop()};
   },
 
   getCached() {
